@@ -12,7 +12,8 @@ All calls to the API's upstream URL will then be proxied through the specify pro
 $ curl -X POST http://kong:8001/apis/{api}/plugins \
     --data "name=http-proxy" \
     --data "config.host=127.0.0.1" \
-    --data "config.port=8118"
+    --data "config.port=8118" \
+    --data "config.log_enable=false"
 ```
 
 ## Installation

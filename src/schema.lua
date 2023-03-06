@@ -10,6 +10,7 @@ return {
         fields = {
           { host = { type = "string", required = true }, },
           { port = { type = "number", required = true }, },
+          { log_enable = { type = "boolean", required = true, default = false }, },
     }, }, },
   },
 }
