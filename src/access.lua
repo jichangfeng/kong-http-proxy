@@ -60,46 +60,60 @@ function _M.execute(conf)
     kong.log("request_params: ", cjson.encode(request_params))
   end
 
-  local httpc = http.new()
-
-  httpc:set_timeouts(ngx.ctx.balancer_data.connect_timeout, ngx.ctx.balancer_data.send_timeout, ngx.ctx.balancer_data.read_timeout)
-
-  -- httpc:set_proxy_options(proxy_options)
-
-  local ok, err = httpc:connect(connect_options)
-  if not ok then
-    kong.log.err("failed to connect: ", err)
-    return kong.response.exit(500, { message = err })
+  local max_retries = ngx.ctx.balancer_data.retries
+  local success = false
+  local errinfo = ""
+  local retries = 0
+  local res_status, res_body, res_headers
+  while not success and retries < max_retries do
+    local httpc = http.new()
+    httpc:set_timeouts(ngx.ctx.balancer_data.connect_timeout, ngx.ctx.balancer_data.send_timeout, ngx.ctx.balancer_data.read_timeout)
+    -- httpc:set_proxy_options(proxy_options)
+    while true do
+      local ok, err = httpc:connect(connect_options)
+      if not ok then
+        retries = retries + 1
+        errinfo = "retries: " .. retries .. ", failed to connect: " .. err
+        kong.log.err(errinfo)
+        break
+      end
+      local res, err = httpc:request(request_params)
+      if not res then
+        retries = retries + 1
+        errinfo = "retries: " .. retries .. ", failed to request: " .. err
+        kong.log.err(errinfo)
+        break
+      end
+      local response_info = {
+        status = res.status,
+        reason = res.reason,
+        headers = res.headers,
+        has_body = res.has_body,
+      }
+      if conf.log_enable then
+        kong.log("response info: ", cjson.encode(response_info))
+      end
+      local body, err = res:read_body()
+      if conf.log_enable then
+        kong.log("response body: ", body)
+      end
+      res_status = res.status
+      res_body = body
+      res_headers = res.headers
+      success = true
+      break
+    end
+    httpc:set_keepalive()
   end
 
-  local res, err = httpc:request(request_params)
-
-  if not res then
-    kong.log.err("failed to request: ", err)
-    return kong.response.exit(500, { message = err })
-  end
-  local response_info = {
-    status = res.status,
-    reason = res.reason,
-    headers = res.headers,
-    has_body = res.has_body,
-  }
-  if conf.log_enable then
-    kong.log("response info: ", cjson.encode(response_info))
-  end
-  local body, err = res:read_body()
-  if conf.log_enable then
-    kong.log("response body: ", body)
+  if not success then
+    -- operation failed after maximum retries
+    return kong.response.exit(500, { message = errinfo })
   end
 
-  local ok, err = httpc:set_keepalive()
-  if not ok then
-    kong.log.err("failed to set keepalive: ", err)
-    return kong.response.exit(500, { message = err })
-  end
-
-  res.headers["Transfer-Encoding"] = nil
-  kong.response.exit(res.status, body, res.headers)
+  res_headers["Transfer-Encoding"] = nil
+  res_headers["transfer-encoding"] = nil
+  kong.response.exit(res_status, res_body, res_headers)
 end
 
 return _M
