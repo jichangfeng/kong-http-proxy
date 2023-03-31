@@ -24,6 +24,7 @@ function _M.execute(conf)
     host = ngx.ctx.balancer_data.host,
     port = ngx.ctx.balancer_data.port,
     ssl_verify = false,
+    ssl_server_name = ngx.ctx.balancer_data.host,
     proxy_opts = proxy_options,
   }
   if conf.log_enable then
