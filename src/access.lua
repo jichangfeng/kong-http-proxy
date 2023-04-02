@@ -1,5 +1,6 @@
 local http = require "resty.http"
 local cjson = require "cjson.safe"
+local tools_utils = require "kong.tools.utils"
 local utils = require("kong.router.utils")
 local sanitize_uri_postfix = utils.sanitize_uri_postfix
 local strip_uri_args       = utils.strip_uri_args
@@ -96,7 +97,11 @@ function _M.execute(conf)
       end
       local body, err = res:read_body()
       if conf.log_enable then
-        kong.log("response body: ", body)
+        if res.headers["Content-Encoding"] == "gzip" then
+          kong.log("response body: ", assert(tools_utils.inflate_gzip(body)))
+        else
+          kong.log("response body: ", body)
+        end
       end
       res_status = res.status
       res_body = body
