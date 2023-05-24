@@ -9,10 +9,20 @@ Add this plugin globally or attached to an API.
 All calls to the API's upstream URL will then be proxied through the specify proxy host and port.
 
 ```bash
+# Common usage
 $ curl -X POST http://kong:8001/apis/{api}/plugins \
     --data "name=http-proxy" \
     --data "config.host=127.0.0.1" \
     --data "config.port=8118" \
+    --data "config.log_enable=false"
+#
+# Client certificates can be configured
+$ curl -X POST http://kong:8001/apis/{api}/plugins \
+    --data "name=http-proxy" \
+    --data "config.host=127.0.0.1" \
+    --data "config.port=8118" \
+    --data "config.ssl_client_cert=/path/to/client/cert" \
+    --data "config.ssl_client_priv_key=/path/to/client/key" \
     --data "config.log_enable=false"
 ```
 

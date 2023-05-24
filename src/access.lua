@@ -24,10 +24,16 @@ function _M.execute(conf)
     scheme = ngx.ctx.balancer_data.scheme,
     host = ngx.ctx.balancer_data.host,
     port = ngx.ctx.balancer_data.port,
-    ssl_verify = false,
     ssl_server_name = ngx.ctx.balancer_data.host,
     proxy_opts = proxy_options,
   }
+  if conf.ssl_client_cert and conf.ssl_client_priv_key then
+    connect_options.ssl_verify = true
+    connect_options.ssl_client_cert = conf.ssl_client_cert
+    connect_options.ssl_client_priv_key = conf.ssl_client_priv_key
+  else
+    connect_options.ssl_verify = false
+  end
   if conf.log_enable then
     kong.log("connect_options: ", cjson.encode(connect_options))
   end
